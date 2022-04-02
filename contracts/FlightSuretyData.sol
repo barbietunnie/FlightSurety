@@ -51,6 +51,14 @@ contract FlightSuretyData {
         _;
     }
 
+    /**
+     * @dev Checks if the provided address is an authorized caller
+     */
+    modifier isCallerAuthorized(address dataContract) {
+        require(authorizedContracts[dataContract] == true, 'Caller is not authorized');
+        _;
+    }
+
     /********************************************************************************************/
     /*                                       UTILITY FUNCTIONS                                  */
     /********************************************************************************************/
@@ -78,8 +86,17 @@ contract FlightSuretyData {
      *
      * Only the contract owner can invoke this function
      */
-    function authorizeCaller(address caller) external requireContractOwner {
-        authorizedContracts[caller] = true;
+    function authorizeCaller(address dataContract) external requireContractOwner {
+        authorizedContracts[dataContract] = true;
+    }
+
+    /**
+     * @dev Removes the provided address as an authorized caller
+     *
+     * Only the contract owner can invoke this function
+     */
+    function deauthorizeCaller(address dataContract) external requireContractOwner {
+        delete authorizedContracts[dataContract];
     }
 
     /********************************************************************************************/

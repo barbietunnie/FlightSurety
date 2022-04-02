@@ -338,6 +338,11 @@ contract FlightSuretyApp {
         return random;
     }
 
+    /**
+     * Dummy function for testing modifier acce
+     */
+    function setTestingMode(bool mode) external pure requireIsOperational {}
+
 // endregion
 
 }   
