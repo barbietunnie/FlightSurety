@@ -1,6 +1,6 @@
 # FlightSurety
 
-FlightSurety is a DApp that caters to flight delay insurance for passengers, and manages collaboration between multiple airlines. Passengers can purchase insurance prior to flight, and if a flight is delayed due to the airline's fault, passengers are paid `1.5X` the amount they paid for insurance. *Oracles* provide flight status information.
+**FlightSurety** is a *DApp* that caters to flight delay insurance for passengers, and manages collaboration between multiple airlines. Passengers can purchase insurance prior to flight, and if a flight is delayed due to the airline's fault, passengers are paid `1.5X` the amount they paid for insurance. *Oracles* provide flight status information.
 
 It was created as a fulfillment for Udacity's Blockchain Nanodegree programme.
 

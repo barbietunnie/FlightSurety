@@ -34,6 +34,12 @@ contract FlightSuretyApp {
     }
     mapping(bytes32 => Flight) private flights;
 
+    struct Airline {
+        string name;
+        uint256 votes;
+    }
+    mapping (address => Airline) private airlines;
+
  
     /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
