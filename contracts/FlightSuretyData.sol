@@ -27,7 +27,7 @@ contract FlightSuretyData {
         bool created;
         AirlineState state;
     }
-    mapping(address => Airline) private airlines;
+    mapping(address => Airline) internal airlines;
 
     uint256 internal numAirlines = 0;
 
@@ -166,20 +166,16 @@ contract FlightSuretyData {
      *      Can only be called from FlightSuretyApp contract
      *
      */
-    function registerAirline(address airline/*, string name*/)
+    function registerAirline(address airline)
         external
         requireIsOperational
         requireCallerToBeExistingAirline
         requireAllowableSingleRegistrations
         airlineDoesNotExist(airline)
-        returns (bool success/*, string airlineName*/, uint8 state, uint256 votes)
+        returns (bool success, uint8 state)
     {
-        // votes = 0;
-        
-        success = false;
         if (numAirlines == 0) {
             airlines[airline] = Airline({
-                // name: name,
                 created: true,
                 state: AirlineState.REGISTERED
             });
@@ -190,7 +186,6 @@ contract FlightSuretyData {
         } else {
             // Add a new airline without any permissions
             airlines[airline] = Airline({
-                // name: name,
                 created: true,
                 state: AirlineState.APPLIED
             });

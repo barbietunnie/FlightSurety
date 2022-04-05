@@ -77,9 +77,7 @@ contract FlightSuretyApp {
     ) public {
         contractOwner = msg.sender;
         flightSuretyData = FlightSuretyData(dataContract);
-        flightSuretyData.registerAirline(
-            airline /*, airlineName*/
-        );
+        flightSuretyData.registerAirline(airline);
     }
 
     /********************************************************************************************/
@@ -98,12 +96,13 @@ contract FlightSuretyApp {
      * @dev Add an airline to the registration queue
      *
      */
-    function registerAirline(address airline/*, string name*/)
-        external
-        requireIsOperational
-        returns (bool success, uint256 votes)
-    {
-        return flightSuretyData.registerAirline(airline/*, name*/);
+    function registerAirline(
+        address airline /*, string name*/
+    ) external requireIsOperational returns (bool success, uint256 votes) {
+        return
+            flightSuretyData.registerAirline(
+                airline /*, name*/
+            );
     }
 
     /**
@@ -315,7 +314,9 @@ contract FlightSuretyApp {
 }
 
 contract FlightSuretyData {
-    function registerAirline(address airline/*, string name*/)
+    function registerAirline(address airline)
         external
-        returns (bool success, uint256 votes);
+        returns (bool success, uint8 state);
+
+    function isAirline(address airline) external returns (bool);
 }

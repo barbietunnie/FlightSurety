@@ -65,11 +65,10 @@ contract("Flight Surety Tests", async (accounts) => {
     let firstAirlineDeployed;
     await config.flightSuretyData.setOperatingStatus(true);
 
-    try {
-      firstAirlineDeployed = await config.flightSuretyData.isAirline.call(
-        config.firstAirline
-      );
-    } catch (e) {}
+    firstAirlineDeployed = await config.flightSuretyData.isAirline.call(
+      config.firstAirline,
+      { from: config.firstAirline }
+    );
 
     assert.equal(
       firstAirlineDeployed,
@@ -79,86 +78,43 @@ contract("Flight Surety Tests", async (accounts) => {
   });
 
   it("(airline) any airline can register the first 4 airlines", async () => {
-    const firstAirline = await config.firstAirline;
-    const airline2 = accounts[3];
     await config.flightSuretyData.setOperatingStatus(true);
 
-    let result;
-//     // try {
-//     //   // console.log(`Account 1: `, accounts[4]);
-//     //   // console.log(`Account 1: `, config.flightSuretyData);
-      result = await config.flightSuretyData.registerAirline.call(airline2, {from: firstAirline});
-      console.log("Result: ", result);
-      assert.equal(result, true, `Airline 2 was not successfully registered`);
+    for (let i = 3; i < 6; i++) {
+      await config.flightSuretyData.registerAirline(accounts[i], {
+        from: config.firstAirline,
+      });
 
-//     //   for (let i = 4; i < 7; i++) {
-//     //     // console.log(`Account ${i}: `, accounts[i])
-//     //     console.log(i);
-//     //     result = await config.flightSuretyData.registerAirline.call(
-//     //       accounts[i],
-//     //       `AIR${i - 3}`,
-//     //       { from: firstAirline }
-//     //     );
-//     //     const count = await config.flightSuretyData.getNumberOfAirlines.call();
-//     //     console.log('Airline count: ', count.toNumber())
-//     //     assert.equal(
-//     //       result.success,
-//     //       true,
-//     //       `Airline ${i-3} was not successfully registered`
-//     //     );
-//     //   }
+      let result = await config.flightSuretyData.isAirline.call(accounts[i], {
+        from: config.firstAirline,
+      });
 
-//     //   //   result = await config.flightSuretyData.registerAirline.call(
-//     //   //     accounts[4],
-//     //   //     `AIR1`
-//     //   //   );
-//     //   //   console.log("Result: ", result);
-//     //   //   assert.equal(result, true, `Airline 1 was not successfully registered`);
-//     // } catch (e) {
-//     //   console.error(e);
-//     // }
+      assert.equal(
+        result,
+        true,
+        `Airline ${i - 3} was not successfully registered`
+      );
+    }
 
-//     // for (let i = 4; i < 7; i++) {
-//     //     // console.log(`Account ${i}: `, accounts[i])
-//     //     result = await config.flightSuretyData.registerAirline.call(
-//     //       accounts[i],
-//     //       `AIR${i - 3}`,
-//     //       { from: firstAirline }
-//     //     );
-//     //     console.log("");
-//     //     console.log(result);
-//     //     const count = await config.flightSuretyData.getNumberOfAirlines.call();
-//     //     console.log('Airline count: ', count.toNumber())
+    // An attempt to singly register the 5th airline should fail
+    let revert = false;
+    try {
+      const airline5 = accounts[6]; // should not be allowed to be singly registered
+      await config.flightSuretyData.registerAirline(airline5, {
+        from: config.firstAirline,
+      });
+    } catch(e) {
+      revert = true;
+    }
 
-//     //     assert.equal(
-//     //       result.success,
-//     //       true,
-//     //       `Airline ${i-3} was not successfully registered`
-//     //     );
-//     //   }
+    assert.equal(
+      revert,
+      true,
+      `Airline 5 was successfully registered`
+    );
 
-//         result = await config.flightSuretyData.registerAirline.call(
-//           accounts[5],
-//         //   `AIR6`,
-//           { from: firstAirline }
-//         );
-
-//         result = await config.flightSuretyData.registerAirline.call(
-//             accounts[6],
-//             // `AIR7`,
-//             { from: firstAirline }
-//           );
-//         console.log(result);
-
-//         console.log('Transaction: ', await config.flightSuretyData.getNumberOfAirlines.call())
-//         const count = await config.flightSuretyData.getNumberOfAirlines.call();
-//         console.log('Airline count: ', count.toNumber())
-
-//         assert.equal(
-//           result.success,
-//           true,
-//           `Airline 6 was not successfully registered`
-//         );
+    // const count = await config.flightSuretyData.getNumberOfAirlines.call();
+    // console.log("Airline count: ", count.toNumber());
   });
 
   // it('(airline) Cannot singly register an airline after the first 4 airlines', async () => {
