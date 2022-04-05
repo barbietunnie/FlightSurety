@@ -30,6 +30,7 @@ contract FlightSuretyData {
     mapping(address => Airline) internal airlines;
 
     uint256 internal numAirlines = 0;
+    uint256 internal totalAirlinesFunded = 0;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -86,7 +87,7 @@ contract FlightSuretyData {
     /**
      * Modifier that requires that no airlines have yet been added or that the caller is an airline
      */
-    modifier requireIsAirline() {
+    modifier requireCallerIsAirline() {
         require(
             numAirlines == 0 || airlines[msg.sender].created,
             "Caller is not an existing airline"
@@ -95,13 +96,12 @@ contract FlightSuretyData {
     }
 
     /**
-     * Modifier that requires that the maximum number of single registrations 
-     allowed has not been exceeded
+     * Modifier that requires that that the provided address is an airline
      */
-    modifier requireAllowableSingleRegistrations() {
+    modifier requireIsAirline(address airline) {
         require(
-            numAirlines < NUMBER_OF_SINGLE_REGISTRATIONS_ALLOWED,
-            "Maximum number of singular registrations met"
+            airlines[airline].created,
+            "Airline does not exist"
         );
         _;
     }
@@ -178,19 +178,16 @@ contract FlightSuretyData {
     function registerAirline(address airline)
         external
         requireIsOperational
-        requireIsAirline
-        requireAllowableSingleRegistrations
+        requireCallerIsAirline
         airlineDoesNotExist(airline)
         returns (bool success, uint8 state)
     {
-        if (numAirlines <= NUMBER_OF_SINGLE_REGISTRATIONS_ALLOWED) {
+        if (numAirlines < NUMBER_OF_SINGLE_REGISTRATIONS_ALLOWED) {
             airlines[airline] = Airline({
                 created: true,
                 participant: false,
                 state: AirlineState.REGISTERED
             });
-            numAirlines = numAirlines.add(1);
-            // numAirlines++;
 
             emit AirlineRegistered(airline);
         } else {
@@ -200,11 +197,11 @@ contract FlightSuretyData {
                 participant: false,
                 state: AirlineState.APPLIED
             });
-            numAirlines = numAirlines.add(1);
-            // numAirlines++;
 
             emit AirlineApplied(airline);
         }
+
+        numAirlines = numAirlines.add(1);
 
         // airlineName = name;
         state = uint8(airlines[airline].state);
@@ -225,16 +222,16 @@ contract FlightSuretyData {
     function getAirlineState(address airline)
         external
         requireIsOperational
-        requireIsAirline
+        requireCallerIsAirline
         returns (uint8 state)
     {
         // return uint8(airlines[airline].state);
 
-        if(airlines[airline].state == AirlineState.APPLIED){
+        if (airlines[airline].state == AirlineState.APPLIED) {
             state = 0;
-        } else if(airlines[airline].state == AirlineState.REGISTERED){
+        } else if (airlines[airline].state == AirlineState.REGISTERED) {
             state = 1;
-        } else if(airlines[airline].state == AirlineState.FUNDED){
+        } else if (airlines[airline].state == AirlineState.FUNDED) {
             state = 2;
         }
     }
@@ -289,18 +286,16 @@ contract FlightSuretyData {
     {
         return numAirlines;
     }
-
-    /**
-     * TODO add modifier - requireIsAirline
-     */
+    
     function updateAirlineState(address airline, uint8 state)
         external
         requireIsOperational
-        
+        requireIsAirline(airline)
     {
         airlines[airline].state = AirlineState(state);
 
         if (state == 2) {
+            totalAirlinesFunded = totalAirlinesFunded.add(1);
             emit AirlineFunded(airline);
         }
     }
@@ -312,7 +307,7 @@ contract FlightSuretyData {
     //     external
     //     payable
     //     requireIsOperational
-    //     requireIsAirline
+    //     requireCallerIsAirline
     //     paidEnough(PARTICIPATION_FEE)
     // {
     //     require(isAirline(airline), "Caller is not an airline");
