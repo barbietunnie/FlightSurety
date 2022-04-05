@@ -44,14 +44,33 @@ It was created as a fulfillment for Udacity's Blockchain Nanodegree programme.
 
 ## Install
 
-This repository contains Smart Contract code in Solidity (using Truffle), tests (also using Truffle), dApp scaffolding (using HTML, CSS and JS) and server app scaffolding.
+This repository contains the Smart Contract code in Solidity (using Truffle), tests (also using Truffle), dApp scaffolding (using HTML, CSS and JS) and server app scaffolding.
 
-To install, download or clone the repo, then:
+1. Download or clone the repo:
 
-```
-npm install
-truffle compile
-```
+    ```
+    git clone git@github.com:barbietunnie/FlightSurety.git
+    ```
+
+2. Create the `.secret` file in the root folder and store your _mnemonic_ there.
+
+    > For example:
+
+    ```
+    fruit exhale enjoyment ...
+    ```
+
+3. Install dependencies
+
+    ```
+    npm install
+    ```
+
+4. Compile DApp
+
+    ```
+    truffle compile
+    ```
 
 ## Develop Client
 
@@ -62,7 +81,7 @@ truffle test ./test/flightSurety.js
 truffle test ./test/oracles.js
 ```
 
-To use the dapp:
+To use the DApp:
 
 ```
 truffle migrate

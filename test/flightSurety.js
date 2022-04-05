@@ -3,10 +3,26 @@ var BigNumber = require("bignumber.js");
 
 contract("Flight Surety Tests", async (accounts) => {
   var config;
+
+  const fundingCost = web3.utils.toWei("10", "ether");
+  const excessAmount = web3.utils.toWei("11", "ether"); // participation fee + gas charges
+  const insufficientAmount = web3.utils.toWei("5.5", "ether"); // participation fee + gas charges
+
   before("setup contract", async () => {
     config = await Test.Config(accounts);
     // await config.flightSuretyData.authorizeCaller(config.flightSuretyApp.address);
   });
+
+  // reset the contract state before each test
+  // beforeEach("", async () => {
+  //   config = await Test.Config(accounts);
+  //   console.log(config);
+  //   config.flightSuretyData = await config.objects.FlightSuretyData.new();
+  //   config.flightSuretyApp = await config.objects.FlightSuretyApp.new(
+  //     flightSuretyData.address,
+  //     firstAirline
+  //   );
+  // });
 
   /****************************************************************************************/
   /* Operations and Settings                                                              */
@@ -46,20 +62,20 @@ contract("Flight Surety Tests", async (accounts) => {
     );
   });
 
-  it(`(multiparty) can block access to functions using requireIsOperational when operating status is false`, async function () {
-    await config.flightSuretyData.setOperatingStatus(false);
+  // it(`(multiparty) can block access to functions using requireIsOperational when operating status is false`, async function () {
+  //   await config.flightSuretyData.setOperatingStatus(false);
 
-    let reverted = false;
-    try {
-      await config.flightSurety.setTestingMode(true);
-    } catch (e) {
-      reverted = true;
-    }
-    assert.equal(reverted, true, "Access not blocked for requireIsOperational");
+  //   let reverted = false;
+  //   try {
+  //     await config.flightSurety.setTestingMode(true);
+  //   } catch (e) {
+  //     reverted = true;
+  //   }
+  //   assert.equal(reverted, true, "Access not blocked for requireIsOperational");
 
-    // Set it back for other tests to work
-    await config.flightSuretyData.setOperatingStatus(true);
-  });
+  //   // Set it back for other tests to work
+  //   await config.flightSuretyData.setOperatingStatus(true);
+  // });
 
   it("(airline) registers first airline when contract is deployed", async () => {
     let firstAirlineDeployed;
@@ -77,10 +93,87 @@ contract("Flight Surety Tests", async (accounts) => {
     );
   });
 
+  it("(airline) An already existing airline cannot apply to join", async () => {
+    await config.flightSuretyData.setOperatingStatus(true);
+
+    let revert = false;
+    try {
+      // firstAirline has been previously created during deployment
+      await config.flightSuretyData.registerAirline(config.firstAirline, {
+        from: config.firstAirline,
+      });
+    } catch (e) {
+      revert = true;
+    }
+
+    assert.equal(revert, true, "Existing airline overwrite is possible");
+  });
+
+  it("(airline) a new airline cannot apply if contract is not operational", async () => {
+    await config.flightSuretyData.setOperatingStatus(false);
+
+    let revert = false;
+    try {
+      await config.flightSuretyData.registerAirline(accounts[3], {
+        from: config.firstAirline,
+      });
+    } catch (e) {
+      revert = true;
+    }
+
+    assert.equal(
+      revert,
+      true,
+      "New airline was registered although the contract is not operational"
+    );
+
+    await config.flightSuretyData.setOperatingStatus(true);
+  });
+
+  it("(airline) A new airline can be registered by an existing airline", async () => {
+    await config.flightSuretyData.setOperatingStatus(true);
+
+    try {
+      await config.flightSuretyData.registerAirline(accounts[3], {
+        from: config.firstAirline,
+      });
+      let result = await config.flightSuretyData.isAirline.call(accounts[3]);
+      assert.equal(result, true, "Cannot register new airline");
+
+      result = await config.flightSuretyData.getAirlineState.call(accounts[4], {
+        from: config.firstAirline,
+      });
+
+      assert.equal(result, true, `Airline 5 was successfully registered`);
+    } catch (e) {}
+  });
+
+  it("(airline) A new airline cannot be registered by a non-existing airline", async () => {
+    await config.flightSuretyData.setOperatingStatus(true);
+
+    let revert = false;
+    try {
+      await config.flightSuretyData.registerAirline(accounts[3]);
+    } catch (e) {
+      revert = true;
+    }
+
+    assert.equal(
+      revert,
+      true,
+      "A new airline can be registered by non-existing airline"
+    );
+  });
+
   it("(airline) any airline can register the first 4 airlines", async () => {
     await config.flightSuretyData.setOperatingStatus(true);
 
-    for (let i = 3; i < 6; i++) {
+    // Print the number of existing airlines
+    let count = await config.flightSuretyData.getNumberOfAirlines.call();
+    // console.log(`Number of existing airlines: ${count}`);
+
+    // 2 airlines have already been previously registered, as evident above
+    for (let i = 4; i < 6; i++) {
       await config.flightSuretyData.registerAirline(accounts[i], {
         from: config.firstAirline,
       });
@@ -92,7 +185,7 @@ contract("Flight Surety Tests", async (accounts) => {
       assert.equal(
         result,
         true,
-        `Airline ${i - 3} was not successfully registered`
+        `Airline ${i - 1} was not successfully registered`
       );
     }
 
@@ -103,6 +196,75 @@ contract("Flight Surety Tests", async (accounts) => {
       await config.flightSuretyData.registerAirline(airline5, {
         from: config.firstAirline,
       });
+    } catch (e) {
+      revert = true;
+    }
+
+    assert.equal(revert, true, `Airline 5 was successfully registered`);
+  });
+
+  it("(airline) cannot pay for airline fund if contract is not operational", async () => {
+    await config.flightSuretyData.setOperatingStatus(false);
+
+    let revert = false;
+    try {
+      await config.flightSuretyApp.payAirlineDues({
+        from: config.firstAirline,
+      });
+    } catch (e) {
+      revert = true;
+    }
+
+    assert.equal(
+      revert,
+      true,
+      "Cannot fund airline if contract is not operational"
+    );
+
+    // reset operating status
+    await config.flightSuretyData.setOperatingStatus(true);
+  });
+
+  it("(airline) can pay airline fund with sufficient funds if contract is operational", async () => {
+    const balanceBeforeTransaction = await web3.eth.getBalance(
+      config.firstAirline
+    );
+
+    // console.log('Balance before payment: ', balanceBeforeTransaction)
+
+    // console.log('Cost:                   ', fundingCost)
+    await config.flightSuretyApp.payAirlineDues({
+      from: config.firstAirline,
+      value: excessAmount,
+    });
+
+    const balanceAfterTransaction = await web3.eth.getBalance(
+      config.firstAirline
+    );
+
+    const difference = balanceBeforeTransaction - balanceAfterTransaction;
+    // console.log(' Balance after payment: ', balanceAfterTransaction)
+    // console.log('Diff: ', difference)
+
+    assert.equal(
+      difference >= fundingCost,
+      true,
+      "The airline fund was not deducted"
+    );
+  });
+
+  it("(airline) cannot pay airline fund with insufficient funds even if contract is operational", async () => {
+    const airlineWithInsufficientFunds = accounts[4];
+    const balanceBeforeTransaction = await web3.eth.getBalance(
+      airlineWithInsufficientFunds
+    );
+
+    let revert = false;
+    try {
+      await config.flightSuretyApp.payAirlineDues({
+        from: airlineWithInsufficientFunds,
+        value: insufficientAmount,
+      });
     } catch(e) {
       revert = true;
     }
@@ -110,93 +272,9 @@ contract("Flight Surety Tests", async (accounts) => {
     assert.equal(
       revert,
       true,
-      `Airline 5 was successfully registered`
+      "An airline with insufficient funds was able to pay for funding"
     );
   });
-
-  // it('(airline) Cannot singly register an airline after the first 4 airlines', async () => {
-  //     const firstAirline = await config.firstAirline;
-  //     await config.flightSuretyData.setOperatingStatus(true);
-
-  //     let revert = false;
-  //     try {
-  //         // Register the next 3 airlines (1 was automatically registered during deployment)
-  //         for (i = 4; i < 7; i++) {
-  //             await config.flightSuretyData.registerAirline.call(accounts[i], `AIR${i-3}`);
-  //         }
-  //     } catch(e) {
-  //         revert = true;
-  //     }
-
-  //     assert.equal(revert, true, "Cannot singly register new airlines");
-  // });
-
-  // it('(airline) A new airline can apply to join', async () => {
-  //     await config.flightSuretyData.setOperatingStatus(true);
-
-  //     try {
-  //         const result = await config.flightSuretyData.registerAirline.call(accounts[3], 'New airline');
-  //         console.log(result);
-  //         assert.equal(result[0], false, "Cannot register airline");
-  //     } catch(e) {}
-  // });
-
-  // it('(airline) An already existing airline cannot apply to join', async () => {
-  //     await config.flightSuretyData.setOperatingStatus(true);
-
-  //     let revert = false;
-  //     let result;
-  //     try {
-  //         // First invocation
-  //         result = await config.flightSuretyData.registerAirline.call(accounts[3], 'New airline');
-
-  //         // console.log('Testing')
-  //         // console.log('Result 1: ', result)
-
-  //         // // Another attempt to create the same airline
-  //         result = await config.flightSuretyData.registerAirline.call(accounts[3], 'New airline');
-
-  //         // console.log('Result 2: ', result)
-
-  //         const count = await config.flightSuretyData.getNumberOfAirlines.call();
-  //         console.log('Count: ', count.toNumber())
-  //     } catch(e) {
-  //         revert = true;
-  //     }
-
-  //     assert.equal(revert, true, "Existing airline overwrite is possible");
-  // });
-
-  // it('(airline) a new airline cannot apply if contract is not operational', async () => {
-  //     await config.flightSuretyData.setOperatingStatus(true);
-  // });
-
-  // it('(airline) Can apply to join', async () => {
-  //     await config.flightSuretyData.setOperatingStatus(true);
-  // });
-
-  // it('(airline) cannot pay for airline fund if contract is not operational', async () => {
-  //     await config.flightSuretyData.setOperatingStatus(false);
-
-  //     let revert = false;
-  //     try {
-  //         await config.flightSuretyData.payAirlineDues({from: config.firstAirline});
-  //     } catch(e) {
-  //         revert = true;
-  //     }
-
-  //     assert.equal(revert, true, "Cannot fund airline if contract is not operational");
-
-  //     // reset operating status
-  //     await config.flightSuretyData.setOperatingStatus(true);
-  // });
-
-  // it('(airline) can pay airline fund if contract is operational', async () => {
-  // });
-
-  // it('(airline) can pay airline fund', async () => {
-  //     await config.flightSuretyData.setOperatingStatus(false);
-  // });
 
   //   it('(airline) cannot register an Airline using registerAirline() if it is not funded', async () => {
   //     // ARRANGE

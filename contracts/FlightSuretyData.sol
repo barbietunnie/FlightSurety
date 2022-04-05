@@ -23,8 +23,8 @@ contract FlightSuretyData {
         FUNDED
     }
     struct Airline {
-        // string name;
         bool created;
+        bool participant;
         AirlineState state;
     }
     mapping(address => Airline) internal airlines;
@@ -45,7 +45,7 @@ contract FlightSuretyData {
 
     event AirlineApplied(address airline);
     event AirlineRegistered(address airline);
-    event AirlinePaid(address airline);
+    event AirlineFunded(address airline);
 
     /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
@@ -86,7 +86,7 @@ contract FlightSuretyData {
     /**
      * Modifier that requires that no airlines have yet been added or that the caller is an airline
      */
-    modifier requireCallerToBeExistingAirline() {
+    modifier requireIsAirline() {
         require(
             numAirlines == 0 || airlines[msg.sender].created,
             "Caller is not an existing airline"
@@ -108,6 +108,15 @@ contract FlightSuretyData {
 
     modifier airlineDoesNotExist(address airline) {
         require(!airlines[airline].created, "Airline already exists");
+        _;
+    }
+
+    // Define a modifier that checks if the paid amount is sufficient to cover the price
+    modifier paidEnough(uint256 _price) {
+        require(
+            msg.value >= _price,
+            "Your balance is not sufficient for payment"
+        );
         _;
     }
 
@@ -169,14 +178,15 @@ contract FlightSuretyData {
     function registerAirline(address airline)
         external
         requireIsOperational
-        requireCallerToBeExistingAirline
+        requireIsAirline
         requireAllowableSingleRegistrations
         airlineDoesNotExist(airline)
         returns (bool success, uint8 state)
     {
-        if (numAirlines == 0) {
+        if (numAirlines <= NUMBER_OF_SINGLE_REGISTRATIONS_ALLOWED) {
             airlines[airline] = Airline({
                 created: true,
+                participant: false,
                 state: AirlineState.REGISTERED
             });
             numAirlines = numAirlines.add(1);
@@ -187,6 +197,7 @@ contract FlightSuretyData {
             // Add a new airline without any permissions
             airlines[airline] = Airline({
                 created: true,
+                participant: false,
                 state: AirlineState.APPLIED
             });
             numAirlines = numAirlines.add(1);
@@ -206,14 +217,18 @@ contract FlightSuretyData {
     function isAirline(address airline)
         external
         requireIsOperational
-        requireCallerToBeExistingAirline
         returns (bool)
     {
         return airlines[airline].created;
     }
-    
-    function getAirlineState(address airline) external requireIsOperational returns (uint8) {
-        return 0; // TODO Switch with implementation
+
+    function getAirlineState(address airline)
+        external
+        requireIsOperational
+        requireIsAirline
+        returns (uint8)
+    {
+        return uint8(airlines[airline].state);
     }
 
     /**
@@ -258,7 +273,37 @@ contract FlightSuretyData {
 
     // require(msg.value >= PARTICIPATION_FEE);
 
-    function getNumberOfAirlines() external requireIsOperational returns (uint256) {
+    function getNumberOfAirlines()
+        external
+        requireIsOperational
+        requireContractOwner
+        returns (uint256)
+    {
         return numAirlines;
     }
+
+    // /**
+    //  * @dev Pay the required dues to be able to fully participate in a contract
+    //  */
+    // function payAirlineDues(address contractAddress, address airline)
+    //     external
+    //     payable
+    //     requireIsOperational
+    //     requireIsAirline
+    //     paidEnough(PARTICIPATION_FEE)
+    // {
+    //     require(isAirline(airline), "Caller is not an airline");
+
+    //     // require(
+    //     //     msg.value >= PARTICIPATION_FEE,
+    //     //     "Your balamce is less than the amount required for funding"
+    //     // );
+    //     address payableAddr = address(uint160(contractAddress));
+    //     payableAddr.transfer(PARTICIPATION_FEE);
+
+    //     // Update the status of the airline
+    //     airlines[msg.sender].state = AirlineState.FUNDED;
+
+    //     emit AirlineFunded(msg.sender);
+    // }
 }

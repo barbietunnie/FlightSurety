@@ -26,7 +26,10 @@ contract FlightSuretyApp {
     uint8 private constant STATUS_CODE_LATE_TECHNICAL = 40;
     uint8 private constant STATUS_CODE_LATE_OTHER = 50;
 
+    uint256 private constant PARTICIPATION_FEE = 10 ether;
+
     address private contractOwner; // Account used to deploy contract
+    address private flightSuretyDataContractAddress;
     FlightSuretyData flightSuretyData;
 
     struct Flight {
@@ -51,7 +54,10 @@ contract FlightSuretyApp {
      */
     modifier requireIsOperational() {
         // Modify to call data contract's status
-        require(true, "Contract is currently not operational");
+        require(
+            flightSuretyData.isOperational(),
+            "Contract is currently not operational"
+        );
         _; // All modifiers require an "_" which indicates where the function body will be added
     }
 
@@ -60,6 +66,23 @@ contract FlightSuretyApp {
      */
     modifier requireContractOwner() {
         require(msg.sender == contractOwner, "Caller is not contract owner");
+        _;
+    }
+
+    modifier requireIsAirline() {
+        require(
+            flightSuretyData.isAirline(msg.sender),
+            "Caller is not an existing airline"
+        );
+        _;
+    }
+
+    // Define a modifier that checks if the paid amount is sufficient to cover the price
+    modifier paidEnough(uint256 _price) {
+        require(
+            msg.value >= _price,
+            "Your balance is not sufficient for payment"
+        );
         _;
     }
 
@@ -76,6 +99,7 @@ contract FlightSuretyApp {
         address airline /*, string airlineName*/
     ) public {
         contractOwner = msg.sender;
+        flightSuretyDataContractAddress = dataContract;
         flightSuretyData = FlightSuretyData(dataContract);
         flightSuretyData.registerAirline(airline);
     }
@@ -305,18 +329,53 @@ contract FlightSuretyApp {
         return random;
     }
 
+    // requireIsOperational requireIsAirline paidEnough(PARTICIPATION_FEE)
+    // function payAirlineDues() external payable {
+    //     flightSuretyData.payAirlineDues(flightSuretyDataContractAddress, msg.sender);
+    // }
+
     /**
-     * Dummy function for testing modifier acce
+     * @dev Pay the required dues to be able to fully participate in a contract
+     *
+     * requireIsAirline
      */
-    function setTestingMode(bool mode) external pure requireIsOperational {}
+    function payAirlineDues()
+        external
+        payable
+        requireIsOperational
+        paidEnough(PARTICIPATION_FEE)
+    {
+        require(
+            flightSuretyData.isAirline(msg.sender),
+            "Caller is not an airline"
+        );
+
+        // require(
+        //     msg.value >= PARTICIPATION_FEE,
+        //     "Your balamce is less than the amount required for funding"
+        // );
+        address payableAddr = address(uint160(flightSuretyDataContractAddress));
+        payableAddr.transfer(PARTICIPATION_FEE);
+
+        // Update the status of the airline
+        // airlines[msg.sender].state = AirlineState.FUNDED;
+
+        // emit AirlineFunded(msg.sender);
+    }
 
     // endregion
 }
 
 contract FlightSuretyData {
+    function isOperational() external returns (bool);
+
     function registerAirline(address airline)
         external
         returns (bool success, uint8 state);
 
     function isAirline(address airline) external returns (bool);
+
+    // function payAirlineDues(address contractAddress, address airline)
+    //     external
+    //     payable;
 }
