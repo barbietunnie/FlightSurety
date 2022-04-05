@@ -12,7 +12,24 @@ contract FlightSuretyData {
     address private contractOwner; // Account used to deploy contract
     bool private operational = true; // Blocks all state changes throughout the contract if false
 
+    uint8 private constant NUMBER_OF_SINGLE_REGISTRATIONS_ALLOWED = 4; // The maximum number of airlines that can be singly registered
+    uint256 private constant PARTICIPATION_FEE = 10 ether;
+
     mapping(address => bool) private authorizedContracts;
+
+    enum AirlineState {
+        APPLIED,
+        REGISTERED,
+        FUNDED
+    }
+    struct Airline {
+        // string name;
+        bool created;
+        AirlineState state;
+    }
+    mapping(address => Airline) private airlines;
+
+    uint256 internal numAirlines = 0;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -25,6 +42,10 @@ contract FlightSuretyData {
     constructor() public {
         contractOwner = msg.sender;
     }
+
+    event AirlineApplied(address airline);
+    event AirlineRegistered(address airline);
+    event AirlinePaid(address airline);
 
     /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
@@ -52,10 +73,41 @@ contract FlightSuretyData {
     }
 
     /**
-     * @dev Checks if the provided address is an authorized caller
+     * @dev Modifier that requires that requires an authorized caller to be the function caller
      */
-    modifier isCallerAuthorized(address dataContract) {
-        require(authorizedContracts[dataContract] == true, 'Caller is not authorized');
+    modifier isAuthorized(address caller) {
+        require(
+            authorizedContracts[caller] == true,
+            "Caller is not authorized"
+        );
+        _;
+    }
+
+    /**
+     * Modifier that requires that no airlines have yet been added or that the caller is an airline
+     */
+    modifier requireCallerToBeExistingAirline() {
+        require(
+            numAirlines == 0 || airlines[msg.sender].created,
+            "Caller is not an existing airline"
+        );
+        _;
+    }
+
+    /**
+     * Modifier that requires that the maximum number of single registrations 
+     allowed has not been exceeded
+     */
+    modifier requireAllowableSingleRegistrations() {
+        require(
+            numAirlines < NUMBER_OF_SINGLE_REGISTRATIONS_ALLOWED,
+            "Maximum number of singular registrations met"
+        );
+        _;
+    }
+
+    modifier airlineDoesNotExist(address airline) {
+        require(!airlines[airline].created, "Airline already exists");
         _;
     }
 
@@ -86,7 +138,10 @@ contract FlightSuretyData {
      *
      * Only the contract owner can invoke this function
      */
-    function authorizeCaller(address dataContract) external requireContractOwner {
+    function authorizeCaller(address dataContract)
+        external
+        requireContractOwner
+    {
         authorizedContracts[dataContract] = true;
     }
 
@@ -95,7 +150,10 @@ contract FlightSuretyData {
      *
      * Only the contract owner can invoke this function
      */
-    function deauthorizeCaller(address dataContract) external requireContractOwner {
+    function deauthorizeCaller(address dataContract)
+        external
+        requireContractOwner
+    {
         delete authorizedContracts[dataContract];
     }
 
@@ -108,7 +166,60 @@ contract FlightSuretyData {
      *      Can only be called from FlightSuretyApp contract
      *
      */
-    function registerAirline() external pure {}
+    function registerAirline(address airline/*, string name*/)
+        external
+        requireIsOperational
+        requireCallerToBeExistingAirline
+        requireAllowableSingleRegistrations
+        airlineDoesNotExist(airline)
+        returns (bool success/*, string airlineName*/, uint8 state, uint256 votes)
+    {
+        // votes = 0;
+        
+        success = false;
+        if (numAirlines == 0) {
+            airlines[airline] = Airline({
+                // name: name,
+                created: true,
+                state: AirlineState.REGISTERED
+            });
+            numAirlines = numAirlines.add(1);
+            // numAirlines++;
+
+            emit AirlineRegistered(airline);
+        } else {
+            // Add a new airline without any permissions
+            airlines[airline] = Airline({
+                // name: name,
+                created: true,
+                state: AirlineState.APPLIED
+            });
+            numAirlines = numAirlines.add(1);
+            // numAirlines++;
+
+            emit AirlineApplied(airline);
+        }
+
+        // airlineName = name;
+        state = uint8(airlines[airline].state);
+        success = true;
+    }
+
+    /**
+     * @dev Checks if the provided address belongs to an airline
+     */
+    function isAirline(address airline)
+        external
+        requireIsOperational
+        requireCallerToBeExistingAirline
+        returns (bool)
+    {
+        return airlines[airline].created;
+    }
+    
+    function getAirlineState(address airline) external requireIsOperational returns (uint8) {
+        return 0; // TODO Switch with implementation
+    }
 
     /**
      * @dev Buy insurance for a flight
@@ -148,5 +259,11 @@ contract FlightSuretyData {
      */
     function() external payable {
         fund();
+    }
+
+    // require(msg.value >= PARTICIPATION_FEE);
+
+    function getNumberOfAirlines() external requireIsOperational returns (uint256) {
+        return numAirlines;
     }
 }

@@ -21,7 +21,7 @@ It was created as a fulfillment for Udacity's Blockchain Nanodegree programme.
    - Registration of fifth and subsequent airlines requires multi-party consensus of 50% of registered airlines
    - Airline can be registered, but does not participate in contract until it submits funding of 10 ether
 3. **Passengers**
-    - Passengers may pay upto 1 ether for purchasing flight insurance
+    - Passengers may pay up to 1 ether for purchasing flight insurance
     - Flight numbers and timestamps are fixed for the purpose of the project and can be defined in the Dapp client
     - If flight is delayed due to airline fault, passenger receives credit of 1.5X the amount they paid
     - Funds are transferred from contract to the passenger wallet only when they initiate a withdrawal
