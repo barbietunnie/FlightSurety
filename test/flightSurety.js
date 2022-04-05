@@ -112,9 +112,6 @@ contract("Flight Surety Tests", async (accounts) => {
       true,
       `Airline 5 was successfully registered`
     );
-
-    // const count = await config.flightSuretyData.getNumberOfAirlines.call();
-    // console.log("Airline count: ", count.toNumber());
   });
 
   // it('(airline) Cannot singly register an airline after the first 4 airlines', async () => {
