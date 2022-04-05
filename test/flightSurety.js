@@ -13,17 +13,6 @@ contract("Flight Surety Tests", async (accounts) => {
     // await config.flightSuretyData.authorizeCaller(config.flightSuretyApp.address);
   });
 
-  // reset the contract state before each test
-  // beforeEach("", async () => {
-  //   config = await Test.Config(accounts);
-  //   console.log(config);
-  //   config.flightSuretyData = await config.objects.FlightSuretyData.new();
-  //   config.flightSuretyApp = await config.objects.FlightSuretyApp.new(
-  //     flightSuretyData.address,
-  //     firstAirline
-  //   );
-  // });
-
   /****************************************************************************************/
   /* Operations and Settings                                                              */
   /****************************************************************************************/
@@ -229,10 +218,11 @@ contract("Flight Surety Tests", async (accounts) => {
     const balanceBeforeTransaction = await web3.eth.getBalance(
       config.firstAirline
     );
+    const stateBeforePayment =
+      await config.flightSuretyData.getAirlineState.call(config.firstAirline, {
+        from: config.firstAirline,
+      });
 
-    // console.log('Balance before payment: ', balanceBeforeTransaction)
-
-    // console.log('Cost:                   ', fundingCost)
     await config.flightSuretyApp.payAirlineDues({
       from: config.firstAirline,
       value: excessAmount,
@@ -242,22 +232,28 @@ contract("Flight Surety Tests", async (accounts) => {
       config.firstAirline
     );
 
+    const stateAfterPayment =
+      await config.flightSuretyData.getAirlineState.call(config.firstAirline, {
+        from: config.firstAirline,
+      });
+
     const difference = balanceBeforeTransaction - balanceAfterTransaction;
-    // console.log(' Balance after payment: ', balanceAfterTransaction)
-    // console.log('Diff: ', difference)
 
     assert.equal(
       difference >= fundingCost,
       true,
       "The airline fund was not deducted"
     );
+    assert.equal(
+      stateBeforePayment,
+      1,
+      "The airline is not in REGISTERED state"
+    );
+    assert.equal(stateAfterPayment, 2, "The airline is not in FUNDED state");
   });
 
   it("(airline) cannot pay airline fund with insufficient funds even if contract is operational", async () => {
     const airlineWithInsufficientFunds = accounts[4];
-    const balanceBeforeTransaction = await web3.eth.getBalance(
-      airlineWithInsufficientFunds
-    );
 
     let revert = false;
     try {
@@ -265,7 +261,7 @@ contract("Flight Surety Tests", async (accounts) => {
         from: airlineWithInsufficientFunds,
         value: insufficientAmount,
       });
-    } catch(e) {
+    } catch (e) {
       revert = true;
     }
 

@@ -349,18 +349,12 @@ contract FlightSuretyApp {
             flightSuretyData.isAirline(msg.sender),
             "Caller is not an airline"
         );
-
-        // require(
-        //     msg.value >= PARTICIPATION_FEE,
-        //     "Your balamce is less than the amount required for funding"
-        // );
+        
         address payableAddr = address(uint160(flightSuretyDataContractAddress));
         payableAddr.transfer(PARTICIPATION_FEE);
-
-        // Update the status of the airline
-        // airlines[msg.sender].state = AirlineState.FUNDED;
-
-        // emit AirlineFunded(msg.sender);
+        
+        // Set airline state to funded
+        flightSuretyData.updateAirlineState(msg.sender, 2);
     }
 
     // endregion
@@ -375,7 +369,5 @@ contract FlightSuretyData {
 
     function isAirline(address airline) external returns (bool);
 
-    // function payAirlineDues(address contractAddress, address airline)
-    //     external
-    //     payable;
+    function updateAirlineState(address airline, uint8 state) external;
 }

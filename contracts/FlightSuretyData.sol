@@ -226,9 +226,17 @@ contract FlightSuretyData {
         external
         requireIsOperational
         requireIsAirline
-        returns (uint8)
+        returns (uint8 state)
     {
-        return uint8(airlines[airline].state);
+        // return uint8(airlines[airline].state);
+
+        if(airlines[airline].state == AirlineState.APPLIED){
+            state = 0;
+        } else if(airlines[airline].state == AirlineState.REGISTERED){
+            state = 1;
+        } else if(airlines[airline].state == AirlineState.FUNDED){
+            state = 2;
+        }
     }
 
     /**
@@ -280,6 +288,21 @@ contract FlightSuretyData {
         returns (uint256)
     {
         return numAirlines;
+    }
+
+    /**
+     * TODO add modifier - requireIsAirline
+     */
+    function updateAirlineState(address airline, uint8 state)
+        external
+        requireIsOperational
+        
+    {
+        airlines[airline].state = AirlineState(state);
+
+        if (state == 2) {
+            emit AirlineFunded(airline);
+        }
     }
 
     // /**
