@@ -86,6 +86,11 @@ contract FlightSuretyApp {
         _;
     }
 
+    modifier onlyPaidAirlines() {
+        require(flightSuretyData.getAirlineState(msg.sender) == 2, "Caller must have paid funding");
+        _;
+    }
+
     /********************************************************************************************/
     /*                                       CONSTRUCTOR                                        */
     /********************************************************************************************/
@@ -362,6 +367,10 @@ contract FlightSuretyApp {
         flightSuretyData.updateAirlineState(msg.sender, 2);
     }
 
+    function approveAirline(address airline) external onlyPaidAirlines {
+        flightSuretyData.approveAirline(airline, msg.sender);
+    }
+
     // endregion
 }
 
@@ -376,5 +385,7 @@ contract FlightSuretyData {
 
     function updateAirlineState(address airline, uint8 state) external;
 
-    function getAirlineState(address airline) external returns (uint8 state);
+    function getAirlineState(address airline) external returns (uint8);
+
+    function approveAirline(address airline, address approver) external returns (uint8);
 }

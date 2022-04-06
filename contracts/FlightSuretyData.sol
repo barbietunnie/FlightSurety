@@ -26,6 +26,8 @@ contract FlightSuretyData {
         bool created;
         bool participant;
         AirlineState state;
+        mapping(address => bool) approvals;
+        uint8 approvalCount;
     }
     mapping(address => Airline) internal airlines;
 
@@ -74,11 +76,12 @@ contract FlightSuretyData {
     }
 
     /**
-     * @dev Modifier that requires that requires an authorized caller to be the function caller
+     * @dev Modifier that requires an authorized caller to be the function caller
      */
-    modifier isAuthorized(address caller) {
+    modifier isAuthorized() {
         require(
-            authorizedContracts[caller] == true,
+            authorizedContracts[msg.sender] == true ||
+                msg.sender == contractOwner,
             "Caller is not authorized"
         );
         _;
@@ -99,10 +102,7 @@ contract FlightSuretyData {
      * Modifier that requires that that the provided address is an airline
      */
     modifier requireIsAirline(address airline) {
-        require(
-            airlines[airline].created,
-            "Airline does not exist"
-        );
+        require(airlines[airline].created, "Airline does not exist");
         _;
     }
 
@@ -186,7 +186,8 @@ contract FlightSuretyData {
             airlines[airline] = Airline({
                 created: true,
                 participant: false,
-                state: AirlineState.REGISTERED
+                state: AirlineState.REGISTERED,
+                approvalCount: 0
             });
 
             emit AirlineRegistered(airline);
@@ -195,7 +196,8 @@ contract FlightSuretyData {
             airlines[airline] = Airline({
                 created: true,
                 participant: false,
-                state: AirlineState.APPLIED
+                state: AirlineState.APPLIED,
+                approvalCount: 0
             });
 
             emit AirlineApplied(airline);
@@ -214,6 +216,7 @@ contract FlightSuretyData {
     function isAirline(address airline)
         external
         requireIsOperational
+        isAuthorized
         returns (bool)
     {
         return airlines[airline].created;
@@ -222,7 +225,7 @@ contract FlightSuretyData {
     function getAirlineState(address airline)
         external
         requireIsOperational
-        requireIsAirline(airline)
+        isAuthorized
         returns (uint8 state)
     {
         // return uint8(airlines[airline].state);
@@ -234,6 +237,25 @@ contract FlightSuretyData {
         } else if (airlines[airline].state == AirlineState.FUNDED) {
             state = 2;
         }
+    }
+
+    function getAirlineApprovalsCount(address airline)
+        external
+        requireIsOperational
+        isAuthorized
+        requireIsAirline(airline)
+        returns (uint8)
+    {
+        return airlines[airline].approvalCount;
+    }
+
+    function getTotalFundedAirlines()
+        external
+        requireIsOperational
+        isAuthorized
+        returns (uint256)
+    {
+        return totalAirlinesFunded;
     }
 
     /**
@@ -286,7 +308,7 @@ contract FlightSuretyData {
     {
         return numAirlines;
     }
-    
+
     function updateAirlineState(address airline, uint8 state)
         external
         requireIsOperational
@@ -298,6 +320,28 @@ contract FlightSuretyData {
             totalAirlinesFunded = totalAirlinesFunded.add(1);
             emit AirlineFunded(airline);
         }
+    }
+
+    function approveAirline(address airline, address approver)
+        external
+        isAuthorized
+        returns (uint8 approvalCount)
+    {
+        require(
+            airlines[airline].approvals[approver] == false,
+            "Duplicate approval not allowed"
+        );
+
+        airlines[airline].approvals[approver] = true;
+        airlines[airline].approvalCount++;
+
+        uint256 consensus = totalAirlinesFunded.div(2);
+        if (airlines[airline].approvalCount >= consensus) {
+            airlines[airline].state = AirlineState.REGISTERED;
+            emit AirlineRegistered(airline);
+        }
+
+        return airlines[airline].approvalCount;
     }
 
     // /**
