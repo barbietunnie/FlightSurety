@@ -127,13 +127,13 @@ contract("Flight Surety Tests", async (accounts) => {
         from: config.firstAirline,
       });
       let result = await config.flightSuretyData.isAirline.call(accounts[2]);
-      assert.equal(result, true, "Cannot register new airline");
+      assert.equal(result, true, "Cannot register the 2nd airline");
 
-      result = await config.flightSuretyData.getAirlineState.call(accounts[3], {
+      result = await config.flightSuretyData.getAirlineState.call(accounts[2], {
         from: config.firstAirline,
       });
 
-      assert.equal(result, true, `Airline 4 was successfully registered`);
+      assert.equal(result, 1, `The 2nd airline is not in REGISTERED state`);
     } catch (e) {}
   });
 
@@ -142,7 +142,7 @@ contract("Flight Surety Tests", async (accounts) => {
 
     let revert = false;
     try {
-      await config.flightSuretyData.registerAirline(accounts[4]);
+      await config.flightSuretyData.registerAirline(accounts[3]);
     } catch (e) {
       revert = true;
     }
@@ -162,7 +162,8 @@ contract("Flight Surety Tests", async (accounts) => {
     // console.log(`Number of existing airlines: ${count}`);
 
     // 2 airlines have already been previously registered, as evident above
-    for (let i = 4; i < 6; i++) {
+    // so register 2 more that do not require consensus
+    for (let i = 3; i < 5; i++) {
       await config.flightSuretyData.registerAirline(accounts[i], {
         from: config.firstAirline,
       });
@@ -186,7 +187,7 @@ contract("Flight Surety Tests", async (accounts) => {
     }
 
     // Airlines 5 upwards should be placed in APPLIED mode which will be subsequently vetted by consensus
-    const airline5 = accounts[6]; // should not be allowed to be singly registered
+    const airline5 = accounts[5]; // should not be allowed to be singly registered
     await config.flightSuretyData.registerAirline(airline5, {
       from: config.firstAirline,
     });
@@ -196,7 +197,7 @@ contract("Flight Surety Tests", async (accounts) => {
     assert.equal(
       result,
       true,
-      `Airline 5 was not added to the list of airlines to be vetted`
+      `The 5th airline was not added to the list of airlines to be vetted`
     );
 
     // Ensure the state is not registered but applied
@@ -204,7 +205,7 @@ contract("Flight Surety Tests", async (accounts) => {
       from: config.firstAirline,
     });
 
-    assert.equal(result, 0, `Airline 5 is not in APPLIED state`);
+    assert.equal(result, 0, `The 5th airline is not in APPLIED state`);
   });
 
   it("(airline) cannot pay for airline fund if contract is not operational", async () => {
@@ -268,12 +269,10 @@ contract("Flight Surety Tests", async (accounts) => {
   });
 
   it("(airline) cannot pay airline fund with insufficient funds even if contract is operational", async () => {
-    const airlineWithInsufficientFunds = accounts[4];
-
     let revert = false;
     try {
       await config.flightSuretyApp.payAirlineDues({
-        from: airlineWithInsufficientFunds,
+        from: accounts[2],
         value: insufficientAmount,
       });
     } catch (e) {
@@ -287,17 +286,43 @@ contract("Flight Surety Tests", async (accounts) => {
     );
   });
 
-  // it("(airline) only registered airlines can be funded", async () => {
-  //   const airline = accounts[7];
-  //   await config.flightSuretyData.registerAirline(airline, {
-  //     from: config.firstAirline,
-  //   });
+  it("(airline) only registered airlines can be funded", async () => {
+    const airline = accounts[5];
 
-  //   let result = config.flightSuretyData.isAirline.call(airline, {
-  //     from: config.firstAirline,
-  //   });
-  //   console.log("Is airline: ", result);
-  // });
+    let result = await config.flightSuretyData.isAirline.call(airline, {
+      from: airline,
+    });
+
+    assert.equal(result, true, "The 5th airline does not exist");
+
+    const stateBeforePayment =
+      await config.flightSuretyData.getAirlineState.call(airline, {
+        from: airline,
+      });
+
+    assert.equal(
+      stateBeforePayment,
+      0,
+      "The 5th airline is not in APPLIED state"
+    );
+
+    // attempt to pay for an airline in APPLIED state (this shouldn't be possible)
+    let revert = false;
+    try {
+      await config.flightSuretyApp.payAirlineDues({
+        from: accounts[5],
+        value: excessAmount,
+      });
+    } catch (e) {
+      revert = true;
+    }
+
+    assert.equal(
+      revert,
+      true,
+      "Only registered airlines can pay for funding"
+    );
+  });
 
   // it('(multiparty) 50% consensus required for registration of 5th and above airlines', async () => {
 

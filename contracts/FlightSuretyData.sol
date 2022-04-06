@@ -222,7 +222,7 @@ contract FlightSuretyData {
     function getAirlineState(address airline)
         external
         requireIsOperational
-        requireCallerIsAirline
+        requireIsAirline(airline)
         returns (uint8 state)
     {
         // return uint8(airlines[airline].state);

@@ -349,10 +349,15 @@ contract FlightSuretyApp {
             flightSuretyData.isAirline(msg.sender),
             "Caller is not an airline"
         );
-        
+
+        require(
+            flightSuretyData.getAirlineState(msg.sender) == 1,
+            "Airline must be in the registered state to be fundable"
+        );
+
         address payableAddr = address(uint160(flightSuretyDataContractAddress));
         payableAddr.transfer(PARTICIPATION_FEE);
-        
+
         // Set airline state to funded
         flightSuretyData.updateAirlineState(msg.sender, 2);
     }
@@ -370,4 +375,6 @@ contract FlightSuretyData {
     function isAirline(address airline) external returns (bool);
 
     function updateAirlineState(address airline, uint8 state) external;
+
+    function getAirlineState(address airline) external returns (uint8 state);
 }
