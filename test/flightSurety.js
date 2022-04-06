@@ -8,6 +8,21 @@ contract("Flight Surety Tests", async (accounts) => {
   const excessAmount = web3.utils.toWei("11", "ether"); // participation fee + gas charges
   const insufficientAmount = web3.utils.toWei("5.5", "ether"); // participation fee + gas charges
 
+  const flights = [
+    "AXiB",
+    "PK9y",
+    "L1DG",
+    "TNA4"
+  ];
+  const insuranceAmounts = [
+    web3.utils.toWei("0.1", "ether"),
+    web3.utils.toWei("0.03", "ether"),
+    web3.utils.toWei("0.95", "ether"),
+    web3.utils.toWei("1", "ether"),
+    web3.utils.toWei("1.2", "ether"),
+    web3.utils.toWei("2", "ether"),
+  ];
+
   before("setup contract", async () => {
     config = await Test.Config(accounts);
     await config.flightSuretyData.authorizeCaller(
@@ -423,29 +438,57 @@ contract("Flight Surety Tests", async (accounts) => {
     // TODO: ensure AirlineRegistered event is received
   });
 
-  // // it('(multiparty) airline state is approved after 50% consensus has been reached', async () => {
-  // //
-
-  // //
-  // // });
-
   // // it('(multiparty) it prevents duplicate approval from the same airline', async () => {
 
   // // });
 
-  // //   it('(airline) cannot register an Airline using registerAirline() if it is not funded', async () => {
-  // //     // ARRANGE
-  // //     let newAirline = accounts[2];
+  // =============================================================================
+  //                        Passenger tests
+  // =============================================================================
+  it("(passenger) can purchase for flight insurance", async () => {
+    await config.flightSuretyApp.purchaseInsurance(flights[0], insuranceAmounts[0], { from: accounts[7] });
+    let result = await config.flightSuretyData.getInsurance.call(accounts[7], flights[0]);
 
-  // //     // ACT
-  // //     try {
-  // //         await config.flightSuretyApp.registerAirline(newAirline, {from: config.firstAirline});
-  // //     } catch(e) {
+    assert.equal(result.flightNo, flights[0], "The insurance was not purchased");
+  });
 
-  // //     }
-  // //     let result = await config.flightSuretyData.isAirline.call(newAirline);
+  it('(passenger) cannot purchase for the same flight insurance multiple times', async () => {
+    let revert = false;
+    try {
+      await config.flightSuretyApp.purchaseInsurance(flights[0], insuranceAmounts[0], { from: accounts[7] });
+    } catch(e) {
+      revert = true;
+    }
 
-  // //     // ASSERT
-  // //     assert.equal(result, false, "Airline should not be able to register another airline if it hasn't provided funding");
-  // //   });
+    assert.equal(revert, true, "Duplicate flight insurances can be purchased");
+  });
+
+  it('(passenger) cannot pay more than 1 ether for insurance', async () => {
+    let revert = false;
+    try {
+      const excess = insuranceAmounts[insufficientAmount.length - 1];
+      await config.flightSuretyApp.purchaseInsurance(flights[1], insuranceAmounts[4], { from: accounts[7], value: excess });
+    } catch(e) {
+      revert = true;
+    }
+
+    assert.equal(revert, true, "Insurance cost can exceed 1 ether");
+  });
+
+  // it('', async () => {
+
+  // });
+
+  // it('', async () => {
+
+  // });
+
+  // it('', async () => {
+
+  // });
+
+  // - Passengers may pay up to 1 ether for purchasing flight insurance
+  // - Flight numbers and timestamps are fixed for the purpose of the project and can be defined in the Dapp client
+  // - If flight is delayed due to airline fault, passenger receives credit of 1.5X the amount they paid
+  // - Funds are transferred from contract to the passenger wallet only when they initiate a withdrawal
 });

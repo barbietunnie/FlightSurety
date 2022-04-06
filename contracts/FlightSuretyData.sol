@@ -14,6 +14,7 @@ contract FlightSuretyData {
 
     uint8 private constant NUMBER_OF_SINGLE_REGISTRATIONS_ALLOWED = 4; // The maximum number of airlines that can be singly registered
     uint256 private constant PARTICIPATION_FEE = 10 ether;
+    uint256 private constant MAX_INSURANCE_COST = 1 ether;
 
     mapping(address => bool) private authorizedContracts;
 
@@ -33,6 +34,22 @@ contract FlightSuretyData {
 
     uint256 internal numAirlines = 0;
     uint256 internal totalAirlinesFunded = 0;
+
+    enum InsuranceState {
+        BOUGHT,
+        CLAIMED,
+        PAID
+    }
+
+    struct Insurance {
+        string flight;
+        bool created;
+        uint256 amount;
+        uint256 payout;
+        InsuranceState state;
+    }
+
+    mapping(address => mapping(string => Insurance)) internal passengerInsurances;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -262,7 +279,52 @@ contract FlightSuretyData {
      * @dev Buy insurance for a flight
      *
      */
-    function buy() external payable {}
+    function purchaseInsurance(
+        string flight,
+        uint256 amount,
+        address passengerAddr
+    ) external payable requireIsOperational isAuthorized {
+        require(passengerInsurances[passengerAddr][flight].created == false, "Duplicate flight insurance cannot be purchased");
+        require(amount <= MAX_INSURANCE_COST, "You may pay up to 1 ether for purchasing flight insurance");
+
+        passengerInsurances[passengerAddr][flight] = Insurance({
+            created: true,
+            flight: flight,
+            amount: amount,
+            payout: amount.mul(3).div(2),
+            state: InsuranceState.BOUGHT
+        });
+    }
+
+    /**
+     * @dev Look up insurance for a flight
+     *
+     */
+    function getInsurance(address passengerAddr, string flight)
+        external
+        requireIsOperational
+        isAuthorized
+        returns (
+            string flightNo,
+            uint256 price,
+            uint256 payout,
+            uint8 state
+        )
+    {
+        flightNo = flight;
+        price = passengerInsurances[passengerAddr][flight].amount;
+        payout = passengerInsurances[passengerAddr][flight].payout;
+        state = uint8(passengerInsurances[passengerAddr][flight].state);
+    }
+
+    function claimInsurance(address passengerAddr, string flight)
+        external
+        requireIsOperational
+        isAuthorized {
+            require(passengerInsurances[passengerAddr][flight].state == InsuranceState.BOUGHT, "Insurance already claimed");
+
+            passengerInsurances[passengerAddr][flight].state = InsuranceState.CLAIMED;
+        }
 
     /**
      *  @dev Credits payouts to insurees
@@ -273,7 +335,13 @@ contract FlightSuretyData {
      *  @dev Transfers eligible payout funds to insuree
      *
      */
-    function pay() external pure {}
+    function requestPayout(address passengerAddr, string flight) external payable {
+        require(passengerInsurances[passengerAddr][flight].state == InsuranceState.CLAIMED, "Insurance has probably been paid out or is not yet claimed");
+
+        passengerInsurances[passengerAddr][flight].state = InsuranceState.PAID;
+        address payableAddr = address(uint160(passengerAddr));
+        payableAddr.transfer(passengerInsurances[passengerAddr][flight].payout);
+    }
 
     /**
      * @dev Initial funding for the insurance. Unless there are too many delayed flights
