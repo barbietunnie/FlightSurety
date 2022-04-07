@@ -445,17 +445,23 @@ contract("Flight Surety Tests", async (accounts) => {
   // =============================================================================
   //                        Passenger tests
   // =============================================================================
-  it("(passenger) can purchase for flight insurance", async () => {
-    await config.flightSuretyApp.purchaseInsurance(flights[0], insuranceAmounts[0], { from: accounts[7] });
+  it("(passenger) can purchase flight insurance", async () => {
+    // Create a fight
+    await config.flightSuretyApp.registerFlight(flights[0], 0, { from: config.firstAirline });
+
+    const flight = await config.flightSuretyApp.getFlight.call(0);
+
+    await config.flightSuretyApp.purchaseInsurance(flight.airline, flight.flight, insuranceAmounts[0], flight.timestamp, { from: accounts[7] });
     let result = await config.flightSuretyData.getInsurance.call(accounts[7], flights[0]);
 
     assert.equal(result.flightNo, flights[0], "The insurance was not purchased");
   });
 
   it('(passenger) cannot purchase for the same flight insurance multiple times', async () => {
+    const flight = await config.flightSuretyApp.getFlight.call(0);
     let revert = false;
     try {
-      await config.flightSuretyApp.purchaseInsurance(flights[0], insuranceAmounts[0], { from: accounts[7] });
+      await config.flightSuretyApp.purchaseInsurance(flight.airline, flight.flight, insuranceAmounts[0], flight.timestamp, { from: accounts[7] });
     } catch(e) {
       revert = true;
     }
@@ -464,10 +470,14 @@ contract("Flight Surety Tests", async (accounts) => {
   });
 
   it('(passenger) cannot pay more than 1 ether for insurance', async () => {
+    // Create another flight
+    await config.flightSuretyApp.registerFlight(flights[1], 0, { from: config.firstAirline });
+    
+    const flight = await config.flightSuretyApp.getFlight.call(1);
     let revert = false;
     try {
       const excess = insuranceAmounts[insufficientAmount.length - 1];
-      await config.flightSuretyApp.purchaseInsurance(flights[1], insuranceAmounts[4], { from: accounts[7], value: excess });
+      await config.flightSuretyApp.purchaseInsurance(flight.airline, flight.flight, insuranceAmounts[4], flight.timestamp, { from: accounts[7], value: excess });
     } catch(e) {
       revert = true;
     }

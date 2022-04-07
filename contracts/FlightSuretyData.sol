@@ -283,7 +283,7 @@ contract FlightSuretyData {
         string flight,
         uint256 amount,
         address passengerAddr
-    ) external payable requireIsOperational isAuthorized {
+    ) external payable requireIsOperational {
         require(passengerInsurances[passengerAddr][flight].created == false, "Duplicate flight insurance cannot be purchased");
         require(amount <= MAX_INSURANCE_COST, "You may pay up to 1 ether for purchasing flight insurance");
 

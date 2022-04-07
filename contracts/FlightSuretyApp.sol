@@ -33,12 +33,14 @@ contract FlightSuretyApp {
     FlightSuretyData flightSuretyData;
 
     struct Flight {
-        bool isRegistered;
+        // bool isRegistered;
+        string flight;
         uint8 statusCode;
-        uint256 updatedTimestamp;
+        uint256 timestamp;
         address airline;
     }
     mapping(bytes32 => Flight) private flights;
+    bytes32[] private flightKeys;
 
     /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
@@ -110,6 +112,72 @@ contract FlightSuretyApp {
         flightSuretyDataContractAddress = dataContract;
         flightSuretyData = FlightSuretyData(dataContract);
         flightSuretyData.registerAirline(airline);
+
+        // Add some dummmy flights for testing
+        addSampleFlights();
+    }
+
+    function addSampleFlights() internal {
+        bytes32 flightKey1 = getFlightKey(contractOwner, "FLIGHT 719", now);
+        flights[flightKey1] = Flight(
+            "FLIGHT 719",
+            STATUS_CODE_UNKNOWN,
+            now,
+            contractOwner
+        );
+        flightKeys.push(flightKey1);
+
+        bytes32 flightKey2 = getFlightKey(
+            contractOwner,
+            "FLIGHT 891",
+            now + 1 days
+        );
+        flights[flightKey2] = Flight(
+            "FLIGHT 891",
+            STATUS_CODE_LATE_TECHNICAL,
+            now + 1 days,
+            contractOwner
+        );
+        flightKeys.push(flightKey2);
+
+        bytes32 flightKey3 = getFlightKey(
+            contractOwner,
+            "FLIGHT 301",
+            now + 2 days
+        );
+        flights[flightKey3] = Flight(
+            "FLIGHT 301",
+            STATUS_CODE_LATE_WEATHER,
+            now + 2 days,
+            contractOwner
+        );
+        flightKeys.push(flightKey3);
+
+        bytes32 flightKey4 = getFlightKey(
+            contractOwner,
+            "FLIGHT 221",
+            now + 5 days
+        );
+        flights[flightKey4] = Flight(
+            "FLIGHT 221",
+            STATUS_CODE_UNKNOWN,
+            now + 5 days,
+            contractOwner
+        );
+        flightKeys.push(flightKey4);
+
+        bytes32 flightKey5 = getFlightKey(
+            contractOwner,
+            "FLIGHT 109",
+            now + 10 days
+        );
+        flights[flightKey5] = Flight(
+            "FLIGHT 109",
+            STATUS_CODE_UNKNOWN,
+            now + 10 days,
+            contractOwner
+        );
+        flightKeys.push(flightKey5);
     }
 
     /********************************************************************************************/
@@ -141,7 +209,35 @@ contract FlightSuretyApp {
      * @dev Register a future flight for insuring.
      *
      */
-    function registerFlight() external pure {}
+    function registerFlight(string flight, uint8 status)
+        external
+        onlyPaidAirlines
+    {
+        bytes32 flightKey = getFlightKey(msg.sender, flight, now);
+
+        flights[flightKey] = Flight(flight, status, now, msg.sender);
+        flightKeys.push(flightKey);
+    }
+
+    function getFlight(uint256 index)
+        external
+        view
+        returns (
+            address airline,
+            string flight,
+            uint256 timestamp,
+            uint8 statusCode
+        )
+    {
+        airline = flights[flightKeys[index]].airline;
+        flight = flights[flightKeys[index]].flight;
+        timestamp = flights[flightKeys[index]].timestamp;
+        statusCode = flights[flightKeys[index]].statusCode;
+    }
+
+    function getFlightsCount() external view returns (uint256 count) {
+        return flightKeys.length;
+    }
 
     /**
      * @dev Called after oracle has updated flight status
@@ -387,11 +483,49 @@ contract FlightSuretyApp {
     //////////////////////////////////////////////////////////////////////////
     //        INSURANCE
     //////////////////////////////////////////////////////////////////////////
-    function purchaseInsurance(string flight, uint256 amount) external payable {
+    uint256 public constant MAX_ALLOWED_INSURANCE = 1 ether;
+    event InsurancePurchased(
+        address passenger,
+        address airline,
+        bytes32 flightKey
+    );
+
+    function purchaseInsurance(
+        address airline,
+        string flight,
+        uint256 amount,
+        uint256 timestamp
+    ) external payable {
+        bytes32 flightKey = getFlightKey(airline, flight, timestamp);
+
+        require(
+            bytes(flights[flightKey].flight).length > 0,
+            "Flight does not exist"
+        );
+        require(
+            msg.value <= MAX_ALLOWED_INSURANCE,
+            "Passengers can buy a maximum of 1 ether for flight insurance"
+        );
+
         address payableAddr = address(uint160(flightSuretyDataContractAddress));
         payableAddr.transfer(amount);
 
         flightSuretyData.purchaseInsurance(flight, amount, msg.sender);
+
+        emit InsurancePurchased(msg.sender, airline, flightKey);
+    }
+
+    function getInsurance(string flight)
+        external
+        view
+        returns (
+            string,
+            uint256,
+            uint256,
+            uint8
+        )
+    {
+        return flightSuretyData.getInsurance(msg.sender, flight);
     }
 
     // endregion
@@ -419,4 +553,13 @@ contract FlightSuretyData {
         uint256 amount,
         address passenger
     ) external payable;
+
+    function getInsurance(address passengerAddr, string flight)
+        external
+        returns (
+            string flightNo,
+            uint256 price,
+            uint256 payout,
+            uint8 state
+        );
 }
