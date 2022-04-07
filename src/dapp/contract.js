@@ -13,6 +13,7 @@ export default class Contract {
     );
     this.initialize(callback);
     this.owner = null;
+    this.accounts = null;
     this.airlines = [];
     this.passengers = [];
   }
@@ -23,6 +24,7 @@ export default class Contract {
       console.log("Accounts: ", accts.length);
 
       this.owner = accts[0];
+      this.accounts = accts;
 
       let counter = 1;
 
@@ -80,10 +82,11 @@ export default class Contract {
     const flightInfo = await self.flightSuretyApp.methods
       .getFlight(flight)
       .call();
+      console.log(flightInfo)
 
     const amountInWei = this.web3.utils.toWei(amount, "ether");
     console.log('Amount in wei: ', amountInWei)
-    
+
     await self.flightSuretyApp.methods
       .purchaseInsurance(
         flightInfo.airline,
@@ -97,6 +100,8 @@ export default class Contract {
           const insurance = await self.flightSuretyApp.methods
             .getInsurance(flightInfo.flight)
             .call({ from: self.owner });
+
+            console.log('Insurance: ', insurance)
 
           insurance.price = self.web3.utils.fromWei(
             insurance.price.toString(),

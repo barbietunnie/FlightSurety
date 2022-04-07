@@ -57,14 +57,14 @@ import "./flightsurety.css";
             label: "Purchase flight insurance",
             error: error,
             value:
-              result.flight +
-              " " +
+              'Flight: ' + result.flightNo +
+              ", Time: " +
               result.timestamp +
-              " " +
-              result.state +
-              " price: " +
+              ", State: " +
+              getFriendlyState(result.state) +
+              ", Price: " +
               result.price +
-              "payout (in ETH): " +
+              ", Payout: " +
               result.payout +
               " ETH",
           },
@@ -73,6 +73,19 @@ import "./flightsurety.css";
     });
   });
 })();
+
+function getFriendlyState(state) {
+    const states = {
+        '0': 'Unknown', 
+        '10': 'Time',
+        '20': 'Late Airline',
+        '30': 'Late Weather',
+        '40': 'Late Technical',
+        '50': 'Late Other'
+    }
+
+    return states[state];
+}
 
 function createSelectOption(flight, index) {
   const option = document.createElement("option");

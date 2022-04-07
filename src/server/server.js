@@ -25,7 +25,7 @@ class Server {
     // TODO Ensure this is up to NUM_ORACLES accounts
     this.web3.eth.getAccounts((error, accts) => {
       if (!accts) {
-        console.error('Error: Unable to load accounts');
+        console.error("Error: Unable to load accounts");
         return;
       }
       console.log("Number of accounts available: ", accts.length);
@@ -38,13 +38,26 @@ class Server {
   }
 
   async setupOracles(callback) {
-    const NUM_ORACLES = 10;
+    const NUM_ORACLES = 20;
     const gasFee = 3000000;
     const oracles = [];
 
     const fee = await this.flightSuretyApp.methods
       .REGISTRATION_FEE()
       .call({ from: this.accounts[0] });
+
+    // Ensure the number of available accounts match the number of oracles to be created to prevent errors
+    if (this.accounts.length < NUM_ORACLES) {
+      console.error(
+        "The number of accounts(" +
+          this.accounts.length +
+          ") available is less than number of oracles(" +
+          NUM_ORACLES +
+          ")." +
+          "Make more accounts available or reduce the number of oracles (NUM_ORACLES) to be created, and then restart the app."
+      );
+      return;
+    }
 
     // Create N number of oracles at startup
     for (let i = 1; i < NUM_ORACLES; i++) {
@@ -96,13 +109,13 @@ class Server {
           try {
             const status = self.getRandomStatusCode();
             const response = await self.flightSuretyApp.methods
-            .submitOracleResponse(index, airline, flight, timestamp, status)
-            .send({ from: oracle.address, gas: 3000000 });
-          
+              .submitOracleResponse(index, airline, flight, timestamp, status)
+              .send({ from: oracle.address, gas: 3000000 });
+
             // console.log("Response from contract: ", response.events);
-            console.error('Oracle response accepted: status = ', status);
-          } catch(err) {
-            console.error('Oracle response rejected');
+            console.error("Oracle response accepted: status = ", status);
+          } catch (err) {
+            console.error("Oracle response rejected");
           }
         });
       }
@@ -114,7 +127,7 @@ class Server {
   getRandomStatusCode() {
     // status code of Unknown (0), On Time (10) or Late Airline (20), Late Weather (30), Late Technical (40), or Late Other (50)
     const status_codes = [0, 10, 20, 30, 40, 50];
-    return status_codes[ Math.floor( Math.random() * status_codes.length ) ];
+    return status_codes[Math.floor(Math.random() * status_codes.length)];
   }
 }
 

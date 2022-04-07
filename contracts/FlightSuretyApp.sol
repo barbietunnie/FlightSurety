@@ -519,10 +519,10 @@ contract FlightSuretyApp {
         external
         view
         returns (
-            string,
-            uint256,
-            uint256,
-            uint8
+            string flightNo,
+            uint256 price,
+            uint256 payout,
+            uint8 state
         )
     {
         return flightSuretyData.getInsurance(msg.sender, flight);

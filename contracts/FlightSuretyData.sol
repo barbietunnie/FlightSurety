@@ -49,7 +49,8 @@ contract FlightSuretyData {
         InsuranceState state;
     }
 
-    mapping(address => mapping(string => Insurance)) internal passengerInsurances;
+    mapping(address => mapping(string => Insurance))
+        internal passengerInsurances;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -284,8 +285,14 @@ contract FlightSuretyData {
         uint256 amount,
         address passengerAddr
     ) external payable requireIsOperational {
-        require(passengerInsurances[passengerAddr][flight].created == false, "Duplicate flight insurance cannot be purchased");
-        require(amount <= MAX_INSURANCE_COST, "You may pay up to 1 ether for purchasing flight insurance");
+        require(
+            passengerInsurances[passengerAddr][flight].created == false,
+            "Duplicate flight insurance cannot be purchased"
+        );
+        require(
+            amount <= MAX_INSURANCE_COST,
+            "You may pay up to 1 ether for purchasing flight insurance"
+        );
 
         passengerInsurances[passengerAddr][flight] = Insurance({
             created: true,
@@ -303,7 +310,6 @@ contract FlightSuretyData {
     function getInsurance(address passengerAddr, string flight)
         external
         requireIsOperational
-        isAuthorized
         returns (
             string flightNo,
             uint256 price,
@@ -320,11 +326,17 @@ contract FlightSuretyData {
     function claimInsurance(address passengerAddr, string flight)
         external
         requireIsOperational
-        isAuthorized {
-            require(passengerInsurances[passengerAddr][flight].state == InsuranceState.BOUGHT, "Insurance already claimed");
+        isAuthorized
+    {
+        require(
+            passengerInsurances[passengerAddr][flight].state ==
+                InsuranceState.BOUGHT,
+            "Insurance already claimed"
+        );
 
-            passengerInsurances[passengerAddr][flight].state = InsuranceState.CLAIMED;
-        }
+        passengerInsurances[passengerAddr][flight].state = InsuranceState
+            .CLAIMED;
+    }
 
     /**
      *  @dev Credits payouts to insurees
@@ -335,8 +347,15 @@ contract FlightSuretyData {
      *  @dev Transfers eligible payout funds to insuree
      *
      */
-    function requestPayout(address passengerAddr, string flight) external payable {
-        require(passengerInsurances[passengerAddr][flight].state == InsuranceState.CLAIMED, "Insurance has probably been paid out or is not yet claimed");
+    function requestPayout(address passengerAddr, string flight)
+        external
+        payable
+    {
+        require(
+            passengerInsurances[passengerAddr][flight].state ==
+                InsuranceState.CLAIMED,
+            "Insurance has probably been paid out or is not yet claimed"
+        );
 
         passengerInsurances[passengerAddr][flight].state = InsuranceState.PAID;
         address payableAddr = address(uint160(passengerAddr));
