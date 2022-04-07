@@ -16,6 +16,9 @@ export default class Contract {
 
     initialize(callback) {
         this.web3.eth.getAccounts((error, accts) => {
+
+            console.log('Number of accounts found: ', accts.length)
+            console.log('Accounts: ', accts.length)
            
             this.owner = accts[0];
 

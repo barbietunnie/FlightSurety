@@ -15,6 +15,11 @@ import './flightsurety.css';
             console.log(error,result);
             display('Operational Status', 'Check if contract is operational', [ { label: 'Operational Status', error: error, value: result} ]);
         });
+
+        // Load the flights
+        // contract.loadFlights((error, flights) => {
+        //     const selectField = DOM.elid("flights");
+        // });
     
 
         // User-submitted transaction

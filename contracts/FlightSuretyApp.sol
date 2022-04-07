@@ -40,8 +40,6 @@ contract FlightSuretyApp {
     }
     mapping(bytes32 => Flight) private flights;
 
-    
-
     /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
     /********************************************************************************************/
@@ -89,7 +87,10 @@ contract FlightSuretyApp {
     }
 
     modifier onlyPaidAirlines() {
-        require(flightSuretyData.getAirlineState(msg.sender) == 2, "Caller must have paid funding");
+        require(
+            flightSuretyData.getAirlineState(msg.sender) == 2,
+            "Caller must have paid funding"
+        );
         _;
     }
 
@@ -240,6 +241,16 @@ contract FlightSuretyApp {
         oracles[msg.sender] = Oracle({isRegistered: true, indexes: indexes});
     }
 
+    // For testing/debugging
+    function getOracleIndexes(address account)
+        external
+        view
+        requireContractOwner
+        returns (uint8[3])
+    {
+        return oracles[account].indexes;
+    }
+
     function getMyIndexes() external view returns (uint8[3]) {
         require(
             oracles[msg.sender].isRegistered,
@@ -373,14 +384,13 @@ contract FlightSuretyApp {
         flightSuretyData.approveAirline(airline, msg.sender);
     }
 
-
     //////////////////////////////////////////////////////////////////////////
     //        INSURANCE
     //////////////////////////////////////////////////////////////////////////
     function purchaseInsurance(string flight, uint256 amount) external payable {
         address payableAddr = address(uint160(flightSuretyDataContractAddress));
         payableAddr.transfer(amount);
-        
+
         flightSuretyData.purchaseInsurance(flight, amount, msg.sender);
     }
 
@@ -400,7 +410,13 @@ contract FlightSuretyData {
 
     function getAirlineState(address airline) external returns (uint8);
 
-    function approveAirline(address airline, address approver) external returns (uint8);
+    function approveAirline(address airline, address approver)
+        external
+        returns (uint8);
 
-    function purchaseInsurance(string flight, uint256 amount, address passenger) external payable;
+    function purchaseInsurance(
+        string flight,
+        uint256 amount,
+        address passenger
+    ) external payable;
 }

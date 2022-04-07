@@ -1,11 +1,12 @@
 
 var Test = require('../config/testConfig.js');
-//var BigNumber = require('bignumber.js');
+var BigNumber = require('bignumber.js');
 
 contract('Oracles', async (accounts) => {
 
   const TEST_ORACLES_COUNT = 20;
   var config;
+
   before('setup contract', async () => {
     config = await Test.Config(accounts);
 
@@ -25,10 +26,15 @@ contract('Oracles', async (accounts) => {
     // ARRANGE
     let fee = await config.flightSuretyApp.REGISTRATION_FEE.call();
 
+    // the loop below requires higher funds that the fee
+    const sufficientFunds = fee * 3;
+
     // ACT
-    for(let a=1; a<TEST_ORACLES_COUNT; a++) {      
-      await config.flightSuretyApp.registerOracle({ from: accounts[a], value: fee });
-      let result = await config.flightSuretyApp.getMyIndexes.call({from: accounts[a]});
+    for(let a = 1; a < TEST_ORACLES_COUNT; a++) {      
+      await config.flightSuretyApp.registerOracle({ from: accounts[a], value: sufficientFunds });
+
+      let result = await config.flightSuretyApp.getMyIndexes.call({ from: accounts[a] });
+
       console.log(`Oracle Registered: ${result[0]}, ${result[1]}, ${result[2]}`);
     }
   });
@@ -47,12 +53,11 @@ contract('Oracles', async (accounts) => {
     // loop through all the accounts and for each account, all its Indexes (indices?)
     // and submit a response. The contract will reject a submission if it was
     // not requested so while sub-optimal, it's a good test of that feature
-    for(let a=1; a<TEST_ORACLES_COUNT; a++) {
+    for(let a = 1; a < TEST_ORACLES_COUNT; a++) {
 
       // Get oracle information
       let oracleIndexes = await config.flightSuretyApp.getMyIndexes.call({ from: accounts[a]});
-      for(let idx=0;idx<3;idx++) {
-
+      for(let idx = 0; idx < 3; idx++) {
         try {
           // Submit a response...it will only be accepted if there is an Index match
           await config.flightSuretyApp.submitOracleResponse(oracleIndexes[idx], config.firstAirline, flight, timestamp, STATUS_CODE_ON_TIME, { from: accounts[a] });
